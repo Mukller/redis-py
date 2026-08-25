@@ -75,6 +75,7 @@ from redis.asyncio.observability.recorder import (
 from redis.asyncio.retry import Retry
 from redis.backoff import NoBackoff
 from redis.credentials import CredentialProvider, UsernamePasswordCredentialProvider
+from redis import exceptions
 from redis.exceptions import (
     AuthenticationError,
     AuthenticationWrongNumberOfArgsError,
@@ -1734,6 +1735,20 @@ def parse_ssl_verify_flags(value):
     return verify_flags
 
 
+
+def _parse_retry_on_error(value):
+    """Resolve a comma-separated list of exception class names taken from a
+    connection URL into actual exception classes (#4277)."""
+    if not isinstance(value, str):
+        return value
+    resolved = []
+    for name in (v.strip() for v in value.split(",") if v.strip()):
+        exc_class = getattr(exceptions, name, None)
+        if isinstance(exc_class, type) and issubclass(exc_class, Exception):
+            resolved.append(exc_class)
+        else:
+            raise ValueError(f"Unknown exception class: {name!r}")
+    return resolved
 URL_QUERY_ARGUMENT_PARSERS: Mapping[str, Callable[..., object]] = MappingProxyType(
     {
         "db": int,
@@ -1742,6 +1757,7 @@ URL_QUERY_ARGUMENT_PARSERS: Mapping[str, Callable[..., object]] = MappingProxyTy
         "socket_read_size": int,
         "socket_keepalive": to_bool,
         "retry_on_timeout": to_bool,
+        "retry_on_error": _parse_retry_on_error,
         "max_connections": int,
         "health_check_interval": int,
         "ssl_check_hostname": to_bool,

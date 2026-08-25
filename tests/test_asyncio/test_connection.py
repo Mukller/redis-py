@@ -956,3 +956,13 @@ async def test_disconnect_no_current_task_calls_close(request):
             mock_on_disconnect.assert_called_once()
 
     assert not conn.is_connected
+
+
+def test_parse_url_resolves_retry_on_error_exception_classes():
+    # issue #4277: the async URL parser must resolve exception class names
+    # the same way the sync parser does.
+    kwargs = parse_url(
+        "redis://localhost:6379/0"
+        "?retry_on_error=ConnectionError,TimeoutError&retry_on_timeout=true"
+    )
+    assert kwargs["retry_on_error"] == [ConnectionError, TimeoutError]
