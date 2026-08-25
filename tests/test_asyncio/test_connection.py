@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import socket
 import ssl
 import types
